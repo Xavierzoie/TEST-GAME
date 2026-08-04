@@ -137,6 +137,16 @@
     min-height:auto;
   }
   .btn-ghost:hover{color:var(--text);}
+  .difficulty-row{
+    display:flex; align-items:center; justify-content:center; gap:4px;
+    flex-wrap:wrap; width:100%; max-width:420px;
+  }
+  .difficulty-label{color:var(--muted); font-size:12px; margin-right:2px;}
+  .diff-btn{
+    text-decoration:none; font-weight:600; padding:6px 10px;
+    border-radius:8px; background:var(--panel-2); color:var(--muted);
+  }
+  .diff-btn:hover{color:var(--text); filter:brightness(1.15);}
   .mute-btn{
     background:var(--panel-2); border:1px solid rgba(255,255,255,0.08);
     border-radius:50%; width:36px; height:36px; padding:0; font-size:15px;
@@ -302,6 +312,9 @@
     0%,100%{box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 0 3px #fff, 0 0 10px 1px #fff;}
     50%{box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 0 4px #fff, 0 0 20px 6px #fff;}
   }
+  .cell.last-move{
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.55);
+  }
 
   .footer-row{
     display:flex; gap:10px; width:100%; max-width:var(--board-max);
@@ -465,16 +478,21 @@
       </div>
     </div>
     <div class="error-msg" id="landing-error"></div>
-    <button class="btn-ghost" id="btn-practice">Or practice solo against the computer →</button>
+    <div class="difficulty-row">
+      <span class="difficulty-label">Or practice solo:</span>
+      <button class="btn-ghost diff-btn" data-diff="easy">Easy</button>
+      <button class="btn-ghost diff-btn" data-diff="medium">Medium</button>
+      <button class="btn-ghost diff-btn" data-diff="hard">Hard</button>
+    </div>
   </div>
 
   <div id="screen-waiting" class="screen hidden">
     <div class="card" style="text-align:center;">
       <h2><span class="pulse"></span>Waiting for your opponent</h2>
-      <div class="name-hint" style="margin-bottom:14px;">Send this code to them — they paste it under "Join room" from their device.</div>
+      <div class="name-hint" style="margin-bottom:14px;">Send them the link or code below — or let them scan the QR code.</div>
       <div class="code-display" id="waiting-code">----</div>
-      <img id="waiting-qr" alt="QR code for the room" style="margin-top:14px; border-radius:12px; width:150px; height:150px; background:#fff; padding:8px;">
-      <button class="btn-secondary" id="btn-copy-code" style="margin-top:14px;">Copy code</button>
+      <img id="waiting-qr" alt="QR code for the room" style="margin-top:14px; border-radius:12px; width:130px; height:130px; background:#fff; padding:8px;">
+      <button class="btn-secondary" id="btn-copy-code" style="margin-top:14px;">Copy invite link</button>
     </div>
     <button class="btn-secondary" id="btn-cancel-wait" style="max-width:420px;">Cancel</button>
   </div>
@@ -537,6 +555,7 @@
   let audioCtx = null;
   let soundOn = true;
   let isBotGame = false;
+  let botDifficulty = 'medium';
 
   // voice chat
   let localStream = null;
@@ -687,6 +706,7 @@
       turn: 1,
       winner: 0,
       winLine: null,
+      lastMove: null,
       rematchVotes: []
     };
   }
@@ -718,7 +738,13 @@
     peer.on('open', (id) => {
       createBtn.disabled = false; createBtn.textContent = originalLabel;
       el('waiting-code').textContent = id;
-      el('waiting-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(id);
+      let basePath = location.pathname;
+      if(basePath.toLowerCase().endsWith('index.html')){
+        basePath = basePath.slice(0, -'index.html'.length);
+      }
+      const inviteLink = location.origin + basePath + '?room=' + encodeURIComponent(id);
+      el('waiting-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(inviteLink);
+      el('waiting-qr').dataset.link = inviteLink;
       hide('screen-landing'); show('screen-waiting');
       el('app-header').classList.add('header-hidden');
       fitBoard();
@@ -795,26 +821,30 @@
     });
   });
 
-  el('btn-practice').addEventListener('click', () => {
-    myName = (el('input-name').value || 'You').trim().slice(0,16) || 'You';
-    isHost = true; isBotGame = true; mySymbol = 1;
-    conn = null; peer = null;
-    state = freshState(myName, 'Computer');
-    lastWinner = 0;
-    score = {1:0, 2:0};
-    hide('screen-landing'); show('screen-game');
-    hide('toolbar-panel');
-    el('app-header').classList.add('header-hidden');
-    render();
-    fitBoard();
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      botDifficulty = btn.getAttribute('data-diff');
+      myName = (el('input-name').value || 'You').trim().slice(0,16) || 'You';
+      isHost = true; isBotGame = true; mySymbol = 1;
+      conn = null; peer = null;
+      const oppName = 'Computer (' + botDifficulty[0].toUpperCase() + botDifficulty.slice(1) + ')';
+      state = freshState(myName, oppName);
+      lastWinner = 0;
+      score = {1:0, 2:0};
+      hide('screen-landing'); show('screen-game');
+      hide('toolbar-panel');
+      el('app-header').classList.add('header-hidden');
+      render();
+      fitBoard();
+    });
   });
 
   el('btn-copy-code').addEventListener('click', () => {
-    const code = el('waiting-code').textContent;
+    const link = el('waiting-qr').dataset.link || el('waiting-code').textContent;
     if(navigator.clipboard){
-      navigator.clipboard.writeText(code).then(() => {
+      navigator.clipboard.writeText(link).then(() => {
         el('btn-copy-code').textContent = 'Copied!';
-        setTimeout(() => { el('btn-copy-code').textContent = 'Copy code'; }, 1500);
+        setTimeout(() => { el('btn-copy-code').textContent = 'Copy invite link'; }, 1500);
       }).catch(() => {});
     }
   });
@@ -1022,6 +1052,7 @@
     state.board = board;
     state.winner = result.winner;
     state.winLine = result.line;
+    state.lastMove = {row, col};
     state.turn = bySymbol === 1 ? 2 : 1;
     broadcast();
     render();
@@ -1035,6 +1066,7 @@
       state.board = emptyBoard();
       state.winner = 0;
       state.winLine = null;
+      state.lastMove = null;
       state.rematchVotes = [];
       state.turn = state.turn === 1 ? 2 : 1;
       render();
@@ -1047,6 +1079,7 @@
       state.board = emptyBoard();
       state.winner = 0;
       state.winLine = null;
+      state.lastMove = null;
       state.rematchVotes = [];
       state.turn = state.turn === 1 ? 2 : 1;
     }
@@ -1054,7 +1087,7 @@
     render();
   }
 
-  // ---------- Simple bot opponent ----------
+  // ---------- Bot opponent (three difficulty tiers) ----------
   function validCols(board){
     const cols = [];
     for(let c=0;c<COLS;c++) if(board[0][c]===0) cols.push(c);
@@ -1075,20 +1108,137 @@
     const options = validCols(board);
     if(options.length === 0) return;
 
-    // 1) take a winning move if one exists
+    if(botDifficulty === 'hard'){
+      const col = bestMoveMinimax(board, 5);
+      finishBotMove(col !== null ? col : options[0]);
+      return;
+    }
+
+    if(botDifficulty === 'medium'){
+      const c = heuristicMove(board, options);
+      finishBotMove(c);
+      return;
+    }
+
+    // easy: mostly random, but occasionally still takes an obvious win
+    // and only sometimes blocks — plays like a distracted beginner
+    if(Math.random() < 0.5){
+      for(const c of options){
+        const b = dropOn(board, c, 2);
+        if(b && checkWinner(b).winner === 2){ finishBotMove(c); return; }
+      }
+    }
+    if(Math.random() < 0.35){
+      for(const c of options){
+        const b = dropOn(board, c, 1);
+        if(b && checkWinner(b).winner === 1){ finishBotMove(c); return; }
+      }
+    }
+    finishBotMove(options[Math.floor(Math.random()*options.length)]);
+  }
+
+  function heuristicMove(board, options){
     for(const c of options){
       const b = dropOn(board, c, 2);
-      if(b && checkWinner(b).winner === 2){ finishBotMove(c); return; }
+      if(b && checkWinner(b).winner === 2) return c;
     }
-    // 2) block the opponent's winning move
     for(const c of options){
       const b = dropOn(board, c, 1);
-      if(b && checkWinner(b).winner === 1){ finishBotMove(c); return; }
+      if(b && checkWinner(b).winner === 1) return c;
     }
-    // 3) otherwise prefer center columns, with a little randomness
     const weights = options.map(c => ({c, w: 4 - Math.abs(c-3) + Math.random()*1.5}));
     weights.sort((a,b) => b.w - a.w);
-    finishBotMove(weights[0].c);
+    return weights[0].c;
+  }
+
+  // ---- minimax with alpha-beta pruning, for Hard difficulty ----
+  function windowScore(cells, symbol){
+    const opp = symbol === 2 ? 1 : 2;
+    let me = 0, them = 0, empty = 0;
+    for(const v of cells){
+      if(v === symbol) me++;
+      else if(v === opp) them++;
+      else empty++;
+    }
+    if(me > 0 && them > 0) return 0;
+    if(me === 4) return 1000;
+    if(me === 3 && empty === 1) return 12;
+    if(me === 2 && empty === 2) return 4;
+    if(them === 4) return -1000;
+    if(them === 3 && empty === 1) return -14;
+    if(them === 2 && empty === 2) return -4;
+    return 0;
+  }
+
+  function evaluateBoard(board, symbol){
+    let score = 0;
+    // center column preference
+    for(let r=0;r<ROWS;r++) if(board[r][3]===symbol) score += 3;
+    // horizontal
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<=COLS-4;c++){
+        score += windowScore([board[r][c],board[r][c+1],board[r][c+2],board[r][c+3]], symbol);
+      }
+    }
+    // vertical
+    for(let c=0;c<COLS;c++){
+      for(let r=0;r<=ROWS-4;r++){
+        score += windowScore([board[r][c],board[r+1][c],board[r+2][c],board[r+3][c]], symbol);
+      }
+    }
+    // diagonal down-right
+    for(let r=0;r<=ROWS-4;r++){
+      for(let c=0;c<=COLS-4;c++){
+        score += windowScore([board[r][c],board[r+1][c+1],board[r+2][c+2],board[r+3][c+3]], symbol);
+      }
+    }
+    // diagonal up-right
+    for(let r=3;r<ROWS;r++){
+      for(let c=0;c<=COLS-4;c++){
+        score += windowScore([board[r][c],board[r-1][c+1],board[r-2][c+2],board[r-3][c+3]], symbol);
+      }
+    }
+    return score;
+  }
+
+  function orderedCols(){ return [3,2,4,1,5,0,6]; }
+
+  function minimax(board, depth, alpha, beta, maximizing){
+    const options = validCols(board).filter(c => orderedCols().includes(c));
+    const result = checkWinner(board);
+    if(result.winner === 2) return {score: 1000000 + depth};
+    if(result.winner === 1) return {score: -1000000 - depth};
+    if(result.winner === 3 || options.length === 0) return {score: 0};
+    if(depth === 0) return {score: evaluateBoard(board, 2)};
+
+    const ordered = orderedCols().filter(c => options.includes(c));
+
+    if(maximizing){
+      let best = {score: -Infinity, col: ordered[0]};
+      for(const c of ordered){
+        const b = dropOn(board, c, 2);
+        const val = minimax(b, depth-1, alpha, beta, false).score;
+        if(val > best.score) best = {score: val, col: c};
+        alpha = Math.max(alpha, val);
+        if(alpha >= beta) break;
+      }
+      return best;
+    } else {
+      let best = {score: Infinity, col: ordered[0]};
+      for(const c of ordered){
+        const b = dropOn(board, c, 1);
+        const val = minimax(b, depth-1, alpha, beta, true).score;
+        if(val < best.score) best = {score: val, col: c};
+        beta = Math.min(beta, val);
+        if(alpha >= beta) break;
+      }
+      return best;
+    }
+  }
+
+  function bestMoveMinimax(board, depth){
+    const result = minimax(board, depth, -Infinity, Infinity, true);
+    return result.col !== undefined ? result.col : null;
   }
 
   function finishBotMove(col){
@@ -1147,6 +1297,7 @@
         if(v===1) cls += ' p1';
         if(v===2) cls += ' p2';
         if(state.winLine && state.winLine.some(([wr,wc]) => wr===r && wc===c)) cls += ' win';
+        if(!state.winLine && state.lastMove && state.lastMove.row===r && state.lastMove.col===c) cls += ' last-move';
         cell.className = cls;
         colDiv.appendChild(cell);
       }
@@ -1311,6 +1462,20 @@
     else if(conn && conn.open) conn.send({type:'rematchVote'});
   });
 
+  // if opened via a shared invite link, prefill the room code and
+  // point the person straight at joining
+  try{
+    const params = new URLSearchParams(location.search);
+    const roomParam = params.get('room');
+    if(roomParam){
+      el('input-code').value = roomParam.trim();
+      const hint = document.createElement('div');
+      hint.textContent = "Room code loaded from your invite link — enter your name above and tap Join.";
+      hint.style.cssText = 'color:var(--teal); font-size:12px; text-align:center; max-width:420px; margin-top:-6px;';
+      el('input-code').parentElement.insertBefore(hint, el('btn-join'));
+      history.replaceState(null, '', location.pathname);
+    }
+  }catch(e){ /* URLSearchParams unavailable — ignore, manual entry still works */ }
   // initial fit once fonts/layout have settled
   fitBoard();
   if(document.fonts && document.fonts.ready){
