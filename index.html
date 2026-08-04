@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#12172B">
 <title>Drop Four</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,18 +30,20 @@
   html,body{
     margin:0; padding:0;
     height:100dvh;
+    width:100vw;
     background: radial-gradient(circle at 50% -10%, #1c2350 0%, var(--bg) 55%);
     color:var(--text);
     font-family:'Inter',sans-serif;
-    overflow-x:hidden;
-    overflow-y:auto;
-    overscroll-behavior:contain;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:manipulation;
   }
   .wrap{
     max-width:720px; margin:0 auto;
     padding:var(--sp-md) clamp(14px,4vw,20px) calc(env(safe-area-inset-bottom,0px) + var(--sp-sm));
     display:flex; align-items:center; justify-content:center;
-    min-height:100dvh;
+    height:100dvh;
+    overflow:hidden;
   }
   .stage{
     display:flex; flex-direction:column; align-items:center;
@@ -625,6 +627,10 @@
 
   window.addEventListener('resize', fitBoard);
   window.addEventListener('orientationchange', fitBoard);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', fitBoard);
+    window.visualViewport.addEventListener('scroll', fitBoard);
+  }
 
   function vibrate(pattern){
     try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
