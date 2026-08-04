@@ -20,22 +20,43 @@
     --text:#EDEFF7;
     --muted:#7A82A6;
     --tube:#0D1122;
+    --sp-xs: clamp(6px, 1.6vw, 8px);
+    --sp-sm: clamp(10px, 2.6vw, 14px);
+    --sp-md: clamp(14px, 3.4vw, 18px);
+    --sp-lg: clamp(20px, 5vw, 28px);
+    --board-max: 460px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{
     margin:0; padding:0;
-    min-height:100dvh;
+    height:100dvh;
     background: radial-gradient(circle at 50% -10%, #1c2350 0%, var(--bg) 55%);
     color:var(--text);
     font-family:'Inter',sans-serif;
     overflow-x:hidden;
-    overscroll-behavior-y:contain;
+    overflow-y:auto;
+    overscroll-behavior:contain;
   }
   .wrap{
     max-width:720px; margin:0 auto;
-    padding:clamp(18px,5vw,32px) clamp(14px,4vw,20px) calc(env(safe-area-inset-bottom,0px) + 50px);
-    display:flex; flex-direction:column; align-items:center;
+    padding:var(--sp-md) clamp(14px,4vw,20px) calc(env(safe-area-inset-bottom,0px) + var(--sp-sm));
+    display:flex; align-items:center; justify-content:center;
     min-height:100dvh;
+  }
+  .stage{
+    display:flex; flex-direction:column; align-items:center;
+    width:100%;
+    gap:var(--sp-sm);
+    transform-origin:center center;
+  }
+  #app-header{
+    display:flex; flex-direction:column; align-items:center;
+    flex-shrink:0;
+    transition:opacity 0.25s ease, max-height 0.25s ease, margin 0.25s ease;
+    overflow:hidden;
+  }
+  #app-header.header-hidden{
+    opacity:0; max-height:0; margin:0; pointer-events:none;
   }
   h1{
     font-family:'Space Grotesk',sans-serif;
@@ -54,7 +75,7 @@
   }
   .tagline{color:var(--muted); font-size:clamp(12px,3vw,14px); margin-bottom:clamp(18px,5vw,28px); text-align:center; max-width:44ch;}
 
-  .screen{width:100%; display:flex; flex-direction:column; align-items:center; gap:16px;}
+  .screen{width:100%; display:flex; flex-direction:column; align-items:center; gap:var(--sp-md);}
   .hidden{display:none !important;}
 
   .card{
@@ -93,12 +114,14 @@
     min-height:44px;
   }
   button:disabled{opacity:0.6; cursor:default;}
-  button:active{transform:scale(0.97);}
+  button:active{transform:translateY(1px) scale(0.98);}
   button:focus-visible{outline:2px solid var(--teal); outline-offset:2px;}
   .btn-primary{
     background:linear-gradient(135deg, var(--amber), #e08a3c);
     color:#1b1305; width:100%;
+    box-shadow:0 3px 0 var(--amber-dim);
   }
+  .btn-primary:active{box-shadow:0 1px 0 var(--amber-dim);}
   .btn-primary:hover{filter:brightness(1.08);}
   .btn-secondary{
     background:var(--panel-2); color:var(--text); width:100%;
@@ -109,18 +132,28 @@
     background:transparent; color:var(--muted); border:none;
     font-size:13px; padding:8px 12px; text-decoration:underline;
     text-decoration-color:rgba(122,130,166,0.4); text-underline-offset:3px;
+    min-height:auto;
   }
   .btn-ghost:hover{color:var(--text);}
   .mute-btn{
     background:var(--panel-2); border:1px solid rgba(255,255,255,0.08);
-    border-radius:50%; width:38px; height:38px; padding:0; font-size:16px;
+    border-radius:50%; width:36px; height:36px; padding:0; font-size:15px;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
     min-height:auto;
   }
-  .voice-row{
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    width:100%; max-width:460px; margin-top:14px; flex-wrap:wrap;
+  .toolbar-panel{
+    display:flex; flex-direction:column; gap:var(--sp-sm);
+    width:100%; max-width:var(--board-max);
+    background:var(--panel);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:16px;
+    padding:var(--sp-sm);
   }
+  .toolbar-row{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    flex-wrap:wrap;
+  }
+  .toolbar-row.reaction-row{gap:clamp(5px,2vw,8px);}
   .voice-btn{
     width:auto; flex:none; font-size:14px; padding:10px 16px;
   }
@@ -168,13 +201,21 @@
   }
   @keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
 
-  .status-bar{
-    display:flex; align-items:center; justify-content:space-between;
-    width:100%; max-width:460px; margin-bottom:14px;
+  .match-bar{
+    display:flex; align-items:center; justify-content:center;
+    width:100%; max-width:var(--board-max);
     font-family:'Space Grotesk',sans-serif; font-size:15px;
     gap:10px; flex-wrap:wrap;
+    background:var(--panel);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:16px;
+    padding:8px 12px;
   }
-  .room-tag{color:var(--muted); font-size:12px; letter-spacing:0.08em;}
+  .match-bar-div{
+    width:1px; align-self:stretch; min-height:22px;
+    background:rgba(255,255,255,0.08);
+    flex-shrink:0;
+  }
   .score-row{display:flex; align-items:center; gap:8px; flex-shrink:0;}
   .score-pill{
     min-width:26px; text-align:center; padding:5px 9px; border-radius:20px;
@@ -185,17 +226,20 @@
   .score-vs{color:var(--muted); font-size:12px;}
   .turn-indicator{
     display:flex; align-items:center; gap:8px;
-    padding:6px 14px; border-radius:20px; background:var(--panel-2);
-    font-size:14px; flex-shrink:0;
+    padding:6px 12px; border-radius:20px;
+    font-size:13px; flex-shrink:0; flex:1;
+    justify-content:center;
+    min-width:0;
   }
-  .swatch{width:14px;height:14px;border-radius:50%; flex-shrink:0;}
+  .turn-indicator span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .swatch{width:12px;height:12px;border-radius:50%; flex-shrink:0;}
 
   .board-frame{
     background:var(--tube);
     border-radius:20px;
     padding:clamp(8px,2.5vw,14px);
     box-shadow: 0 20px 50px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04);
-    max-width:460px; width:100%;
+    max-width:var(--board-max); width:100%;
     touch-action:manipulation;
   }
   .board{
@@ -244,9 +288,10 @@
   .cell.p2{ background:radial-gradient(circle at 35% 30%, #a6f5ee, var(--teal) 60%, var(--teal-dim));
     animation: drop 0.35s cubic-bezier(.35,1.6,.6,1); }
   @keyframes drop{
-    0%{transform:translateY(-140%); opacity:0.6;}
-    70%{transform:translateY(6%);}
-    100%{transform:translateY(0); opacity:1;}
+    0%{transform:translateY(-140%) scale(1); opacity:0.6;}
+    65%{transform:translateY(4%) scale(1);}
+    78%{transform:translateY(-2%) scaleX(1.12) scaleY(0.86);}
+    100%{transform:translateY(0) scale(1); opacity:1;}
   }
   .cell.win{
     animation: winPulse 1.1s ease-in-out infinite;
@@ -257,14 +302,27 @@
   }
 
   .footer-row{
-    display:flex; gap:10px; width:100%; max-width:460px; margin-top:18px;
+    display:flex; gap:10px; width:100%; max-width:var(--board-max);
   }
   .footer-row button{flex:1; font-size:clamp(13px,3.4vw,15px); padding:13px 10px;}
 
+  @media (max-width:520px){
+    .footer-row{
+      position:sticky; bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
+      padding:10px; margin-top:4px;
+      background:rgba(18,23,43,0.82);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.06);
+      box-shadow:0 10px 30px rgba(0,0,0,0.35);
+    }
+  }
+
   .banner{
-    width:100%; max-width:460px; text-align:center;
+    width:100%; max-width:var(--board-max); text-align:center;
     font-family:'Space Grotesk',sans-serif; font-size:clamp(15px,4vw,17px); font-weight:700;
-    padding:12px; border-radius:12px; margin-top:14px;
+    padding:12px; border-radius:12px;
     background:var(--panel-2);
   }
   .banner.win-you{color:var(--teal); box-shadow:inset 0 0 0 1px rgba(79,209,197,0.4);}
@@ -274,17 +332,13 @@
   .error-msg{color:#ff8484; font-size:13px; min-height:18px; text-align:center;}
   .conn-status{color:var(--muted); font-size:12px; text-align:center; min-height:16px;}
 
-  .reaction-bar{
-    display:flex; gap:clamp(5px,2vw,8px); justify-content:center; margin-top:14px;
-    max-width:460px; width:100%; flex-wrap:wrap;
-  }
   .reaction-btn{
-    background:var(--panel); border:1px solid rgba(255,255,255,0.07);
-    border-radius:50%; width:44px; height:44px; font-size:20px;
+    background:var(--panel-2); border:1px solid rgba(255,255,255,0.07);
+    border-radius:50%; width:42px; height:42px; font-size:19px;
     display:flex; align-items:center; justify-content:center; padding:0;
-    flex-shrink:0; touch-action:manipulation;
+    flex-shrink:0; touch-action:manipulation; min-height:auto;
   }
-  .reaction-btn:hover{background:var(--panel-2); transform:scale(1.08);}
+  .reaction-btn:hover{background:var(--panel); transform:scale(1.08);}
   .reaction-btn:active{transform:scale(0.92);}
 
   .flying-emoji{
@@ -306,15 +360,65 @@
     .cell.p1, .cell.p2{animation:none;}
     .pulse{animation:none;}
     .cell.win{animation:none;}
+    .screen-anim{animation:none;}
+    .turn-indicator.my-turn{animation:none;}
+    .score-pill.bump{animation:none;}
+    h1 .dot{animation:none;}
+    .banner{animation:none;}
+    .board-frame{animation:none;}
+  }
+
+  /* ---------- animation layer ---------- */
+  @keyframes screenIn{
+    0%{opacity:0; transform:translateY(10px) scale(0.985);}
+    100%{opacity:1; transform:translateY(0) scale(1);}
+  }
+  .screen-anim{animation: screenIn 0.42s cubic-bezier(.22,.85,.32,1) both;}
+
+  h1 .dot{
+    background-size:200% 200%;
+    animation: dotShift 4s ease-in-out infinite;
+  }
+  @keyframes dotShift{
+    0%,100%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+  }
+
+  .turn-indicator.my-turn{
+    animation: turnGlow 1.7s ease-in-out infinite;
+  }
+  @keyframes turnGlow{
+    0%,100%{box-shadow:inset 0 0 0 1px rgba(79,209,197,0.15), 0 0 0 0 rgba(79,209,197,0.0);}
+    50%{box-shadow:inset 0 0 0 1px rgba(79,209,197,0.5), 0 0 14px 1px rgba(79,209,197,0.35);}
+  }
+
+  .score-pill.bump{animation: pillBump 0.5s cubic-bezier(.36,1.8,.4,1);}
+  @keyframes pillBump{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.35);}
+    100%{transform:scale(1);}
+  }
+
+  .banner{animation: bannerIn 0.4s cubic-bezier(.22,.9,.3,1) both;}
+  @keyframes bannerIn{
+    0%{opacity:0; transform:scale(0.9) translateY(6px);}
+    100%{opacity:1; transform:scale(1) translateY(0);}
+  }
+
+  .board-frame{animation: boardIn 0.5s cubic-bezier(.2,.85,.3,1) both;}
+  @keyframes boardIn{
+    0%{opacity:0; transform:scale(0.94);}
+    100%{opacity:1; transform:scale(1);}
   }
 
   /* very narrow phones (older/small devices) */
   @media (max-width:360px){
     .tagline{display:none;}
-    .status-bar{font-size:13px;}
-    .turn-indicator{padding:5px 10px; font-size:12px;}
+    .match-bar{font-size:13px; padding:6px 8px;}
+    .turn-indicator{padding:5px 8px; font-size:11px;}
     .code-display{letter-spacing:0.04em;}
     #waiting-qr{width:130px; height:130px;}
+    .reaction-btn{width:38px; height:38px; font-size:17px;}
   }
 
   /* short / landscape viewports: tighten vertical rhythm so the board fits */
@@ -324,20 +428,22 @@
     .tagline{display:none;}
     .screen{gap:10px;}
     .card{padding:14px;}
-    .footer-row{margin-top:10px;}
-    .reaction-bar{margin-top:8px;}
+    .toolbar-panel{padding:8px;}
   }
 
   /* larger screens: give the board a bit more room to breathe */
   @media (min-width:900px){
-    .board-frame, .status-bar, .footer-row, .banner, .reaction-bar, .voice-row{max-width:520px;}
+    :root{ --board-max: 520px; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1><span class="dot"></span>Drop Four</h1>
-  <div class="tagline">Connect four in a row. Play with someone on another device — connects directly, device to device.</div>
+<div class="stage" id="stage">
+  <div id="app-header">
+    <h1><span class="dot"></span>Drop Four</h1>
+    <div class="tagline">Connect four in a row. Play with someone on another device — connects directly, device to device.</div>
+  </div>
 
   <div id="screen-landing" class="screen">
     <div class="landing-row">
@@ -372,32 +478,35 @@
   </div>
 
   <div id="screen-game" class="screen hidden">
-    <div class="status-bar">
+    <div class="match-bar">
       <div class="score-row" id="score-row">
         <span class="score-pill p1" id="score-p1">0</span>
         <span class="score-vs">–</span>
         <span class="score-pill p2" id="score-p2">0</span>
       </div>
+      <div class="match-bar-div"></div>
       <div class="turn-indicator" id="turn-indicator">
         <span class="swatch" id="turn-swatch"></span>
         <span id="turn-text">—</span>
       </div>
       <button class="mute-btn" id="btn-mute" aria-label="Mute sound" title="Mute sound">🔊</button>
     </div>
-    <div class="board-frame">
+    <div class="board-frame" id="board-frame">
       <div class="ghost-row" id="ghost-row"></div>
       <div class="board" id="board"></div>
     </div>
-    <div class="voice-row hidden" id="voice-row">
-      <button class="btn-secondary voice-btn" id="btn-voice">🎙️ Enable voice chat</button>
-      <span class="voice-status" id="voice-status"></span>
-    </div>
-    <div class="reaction-bar" id="reaction-bar">
-      <button class="reaction-btn" data-emoji="🔥">🔥</button>
-      <button class="reaction-btn" data-emoji="😂">😂</button>
-      <button class="reaction-btn" data-emoji="😱">😱</button>
-      <button class="reaction-btn" data-emoji="👏">👏</button>
-      <button class="reaction-btn" data-emoji="😤">😤</button>
+    <div class="toolbar-panel hidden" id="toolbar-panel">
+      <div class="toolbar-row" id="voice-row">
+        <button class="btn-secondary voice-btn" id="btn-voice">🎙️ Enable voice chat</button>
+        <span class="voice-status" id="voice-status"></span>
+      </div>
+      <div class="toolbar-row reaction-row" id="reaction-bar">
+        <button class="reaction-btn" data-emoji="🔥">🔥</button>
+        <button class="reaction-btn" data-emoji="😂">😂</button>
+        <button class="reaction-btn" data-emoji="😱">😱</button>
+        <button class="reaction-btn" data-emoji="👏">👏</button>
+        <button class="reaction-btn" data-emoji="😤">😤</button>
+      </div>
     </div>
     <div class="banner hidden" id="banner"></div>
     <div class="conn-status" id="conn-status"></div>
@@ -406,6 +515,7 @@
       <button class="btn-secondary" id="btn-leave">Leave room</button>
     </div>
   </div>
+</div>
 </div>
 <audio id="remote-audio" autoplay playsinline></audio>
 <div id="reaction-fly-layer" style="position:fixed; inset:0; pointer-events:none; z-index:60; overflow:hidden;"></div>
@@ -434,12 +544,92 @@
   let micMuted = false;
 
   const el = id => document.getElementById(id);
-  const show = id => el(id).classList.remove('hidden');
+  const show = id => {
+    const e = el(id);
+    if(e.classList.contains('hidden')){
+      e.classList.remove('hidden');
+      e.classList.remove('screen-anim');
+      void e.offsetWidth;
+      e.classList.add('screen-anim');
+    }
+  };
   const hide = id => el(id).classList.add('hidden');
+
+  // ---------- Fit the whole game to the viewport, no page scroll needed ----------
+  let fitRAF = null;
+  function fitBoard(){
+    if(fitRAF) cancelAnimationFrame(fitRAF);
+    fitRAF = requestAnimationFrame(() => {
+      const screenGame = document.getElementById('screen-game');
+      const boardFrame = document.getElementById('board-frame');
+      const wrap = document.querySelector('.wrap');
+      const isGameVisible = screenGame && !screenGame.classList.contains('hidden');
+
+      if(!isGameVisible || !boardFrame || !wrap){
+        fitScreen();
+        return;
+      }
+
+      // measure siblings at a generous width first so shrinking doesn't
+      // self-reinforce (a smaller board could hide a wrapped line, etc.)
+      document.documentElement.style.setProperty('--board-max', '560px');
+
+      requestAnimationFrame(() => {
+        const children = Array.from(screenGame.children).filter(c => c.offsetParent !== null);
+        const gapPx = parseFloat(getComputedStyle(screenGame).rowGap) || 0;
+        let siblingsHeight = 0;
+        children.forEach(c => { if(c !== boardFrame) siblingsHeight += c.getBoundingClientRect().height; });
+        const gapsCount = Math.max(0, children.length - 1);
+
+        const wrapStyle = getComputedStyle(wrap);
+        const wrapPadY = (parseFloat(wrapStyle.paddingTop)||0) + (parseFloat(wrapStyle.paddingBottom)||0);
+        const wrapPadX = (parseFloat(wrapStyle.paddingLeft)||0) + (parseFloat(wrapStyle.paddingRight)||0);
+        const headerH = el('app-header').classList.contains('header-hidden') ? 0 : el('app-header').getBoundingClientRect().height;
+
+        const viewportH = window.innerHeight;
+        const availableForBoard = viewportH - wrapPadY - headerH - siblingsHeight - (gapPx*gapsCount) - 6;
+        const availableWidth = Math.min(window.innerWidth, wrap.clientWidth) - wrapPadX;
+
+        const finalSize = Math.max(180, Math.min(availableWidth, availableForBoard, 560));
+        document.documentElement.style.setProperty('--board-max', Math.floor(finalSize) + 'px');
+
+        fitScreen();
+      });
+    });
+  }
+
+  // Universal safety net: after the board (if any) is sized, check whether
+  // the whole visible screen — landing, waiting, or game — still exceeds
+  // the viewport, and if so scale the entire stage down as one unit so
+  // nothing ever needs to scroll, on any screen, on any device.
+  function fitScreen(){
+    requestAnimationFrame(() => {
+      const stage = document.getElementById('stage');
+      const wrap = document.querySelector('.wrap');
+      if(!stage || !wrap) return;
+
+      stage.style.transform = 'none';
+      const naturalH = stage.scrollHeight;
+      const naturalW = stage.scrollWidth;
+
+      const wrapStyle = getComputedStyle(wrap);
+      const wrapPadY = (parseFloat(wrapStyle.paddingTop)||0) + (parseFloat(wrapStyle.paddingBottom)||0);
+      const wrapPadX = (parseFloat(wrapStyle.paddingLeft)||0) + (parseFloat(wrapStyle.paddingRight)||0);
+      const availH = window.innerHeight - wrapPadY;
+      const availW = window.innerWidth - wrapPadX;
+
+      const scale = Math.min(1, (availH / naturalH) * 0.985, (availW / naturalW) * 0.985);
+      stage.style.transform = scale < 0.99 ? ('scale(' + scale + ')') : 'none';
+    });
+  }
+
+  window.addEventListener('resize', fitBoard);
+  window.addEventListener('orientationchange', fitBoard);
 
   function vibrate(pattern){
     try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
   }
+
 
   function beep(freq, dur, type, vol){
     if(!soundOn) return;
@@ -524,6 +714,8 @@
       el('waiting-code').textContent = id;
       el('waiting-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(id);
       hide('screen-landing'); show('screen-waiting');
+      el('app-header').classList.add('header-hidden');
+      fitBoard();
     });
 
     peer.on('connection', (c) => {
@@ -540,6 +732,8 @@
       createBtn.disabled = false; createBtn.textContent = originalLabel;
       el('landing-error').textContent = "Connection error (" + err.type + "). Try again.";
       hide('screen-waiting'); show('screen-landing');
+      el('app-header').classList.remove('header-hidden');
+      fitBoard();
     });
   });
 
@@ -583,7 +777,9 @@
         conn.send({type:'hello', name: myName});
         hide('screen-landing');
         show('screen-game');
-        show('voice-row');
+        show('toolbar-panel');
+        el('app-header').classList.add('header-hidden');
+        fitBoard();
       });
     });
 
@@ -601,8 +797,10 @@
     lastWinner = 0;
     score = {1:0, 2:0};
     hide('screen-landing'); show('screen-game');
-    hide('voice-row');
+    hide('toolbar-panel');
+    el('app-header').classList.add('header-hidden');
     render();
+    fitBoard();
   });
 
   el('btn-copy-code').addEventListener('click', () => {
@@ -618,6 +816,8 @@
   el('btn-cancel-wait').addEventListener('click', () => {
     if(peer) peer.destroy();
     hide('screen-waiting'); show('screen-landing');
+    el('app-header').classList.remove('header-hidden');
+    fitBoard();
   });
 
   el('btn-leave').addEventListener('click', () => {
@@ -626,6 +826,8 @@
     state = null; conn = null; peer = null; isBotGame = false;
     score = {1:0, 2:0}; lastWinner = 0;
     hide('screen-game'); show('screen-landing');
+    el('app-header').classList.remove('header-hidden');
+    fitBoard();
   });
 
   el('btn-mute').addEventListener('click', () => {
@@ -755,7 +957,8 @@
     if(isHost){
       if(msg.type === 'hello'){
         state = freshState(myName, msg.name);
-        hide('screen-waiting'); show('screen-game'); show('voice-row');
+        hide('screen-waiting'); show('screen-game'); show('toolbar-panel');
+        fitBoard();
         broadcast();
         render();
       } else if(msg.type === 'move'){
@@ -963,12 +1166,15 @@
 
     const swatch = el('turn-swatch');
     const turnText = el('turn-text');
+    const turnIndicator = el('turn-indicator');
     if(state.winner){
-      el('turn-indicator').style.visibility = 'hidden';
+      turnIndicator.style.visibility = 'hidden';
+      turnIndicator.classList.remove('my-turn');
     } else {
-      el('turn-indicator').style.visibility = 'visible';
+      turnIndicator.style.visibility = 'visible';
       swatch.style.background = state.turn === 1 ? 'var(--amber)' : 'var(--teal)';
       turnText.textContent = state.turn === mySymbol ? 'Your turn' : (state.names[state.turn] || 'Opponent') + "'s turn";
+      turnIndicator.classList.toggle('my-turn', state.turn === mySymbol);
     }
 
     const banner = el('banner');
@@ -991,8 +1197,13 @@
           sfxDraw();
         } else {
           score[state.winner] = (score[state.winner] || 0) + 1;
-          if(p1) p1.textContent = score[1];
-          if(p2) p2.textContent = score[2];
+          const bumpEl = el('score-p' + state.winner);
+          if(bumpEl){
+            bumpEl.textContent = score[state.winner];
+            bumpEl.classList.remove('bump');
+            void bumpEl.offsetWidth;
+            bumpEl.classList.add('bump');
+          }
           sfxWin();
           if(state.winner === mySymbol){ launchConfetti(); vibrate([30,50,30,50,60]); }
           else { vibrate(80); }
@@ -1011,6 +1222,7 @@
       rematchBtn.disabled = true;
       rematchBtn.textContent = 'Rematch';
     }
+    fitBoard();
   }
 
   // keyboard: number keys 1-7 drop into that column
@@ -1092,6 +1304,12 @@
     if(isHost) castRematchVote(1);
     else if(conn && conn.open) conn.send({type:'rematchVote'});
   });
+
+  // initial fit once fonts/layout have settled
+  fitBoard();
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(fitBoard).catch(() => {});
+  }
 
 })();
 </script>
