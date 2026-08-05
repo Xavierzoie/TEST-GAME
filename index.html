@@ -147,6 +147,34 @@
     border-radius:8px; background:var(--panel-2); color:var(--muted);
   }
   .diff-btn:hover{color:var(--text); filter:brightness(1.15);}
+
+  .avatar-picker{
+    display:flex; flex-wrap:wrap; gap:6px; margin:-6px 0 14px;
+  }
+  .avatar-btn{
+    background:var(--panel-2); border:1px solid transparent;
+    border-radius:10px; width:36px; height:36px; font-size:18px;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    min-height:auto; flex-shrink:0;
+  }
+  .avatar-btn.active{
+    border-color:var(--teal);
+    background:rgba(79,209,197,0.15);
+    transform:scale(1.08);
+  }
+
+  .match-len-row{
+    display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;
+  }
+  .len-btn{
+    text-decoration:none; font-weight:600; padding:7px 10px;
+    border-radius:8px; background:var(--panel-2); color:var(--muted);
+    font-size:12px;
+  }
+  .len-btn.active{
+    background:linear-gradient(135deg, var(--amber), #e08a3c);
+    color:#1b1305;
+  }
   .mute-btn{
     background:var(--panel-2); border:1px solid rgba(255,255,255,0.08);
     border-radius:50%; width:36px; height:36px; padding:0; font-size:15px;
@@ -245,6 +273,13 @@
   }
   .turn-indicator span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .swatch{width:12px;height:12px;border-radius:50%; flex-shrink:0;}
+  .turn-timer{
+    font-weight:700; font-size:12px; color:var(--amber);
+    background:rgba(242,166,90,0.15); border-radius:10px;
+    padding:1px 7px; flex-shrink:0;
+  }
+  .turn-timer.urgent{color:#ff8484; background:rgba(255,132,132,0.18); animation:timerPulse 0.6s ease-in-out infinite;}
+  @keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
 
   .board-frame{
     background:var(--tube);
@@ -366,6 +401,43 @@
     100%{transform:translateY(-320px) scale(1); opacity:0;}
   }
 
+  .chat-row{gap:8px;}
+  #chat-input{
+    flex:1; min-width:0; margin-bottom:0;
+    padding:10px 12px; font-size:14px; letter-spacing:normal;
+    font-family:'Inter',sans-serif;
+  }
+  .chat-bubble{
+    position:absolute; bottom:70px; max-width:min(78vw, 320px);
+    background:var(--panel); border:1px solid rgba(255,255,255,0.1);
+    border-radius:14px; padding:8px 12px;
+    font-size:13px; line-height:1.35; color:var(--text);
+    box-shadow:0 6px 18px rgba(0,0,0,0.35);
+    animation: chatFloat 3.4s ease-out forwards;
+  }
+  .chat-bubble .chat-name{
+    display:block; font-size:10px; font-weight:700; letter-spacing:0.04em;
+    text-transform:uppercase; margin-bottom:2px;
+  }
+  .chat-bubble.mine{border-color:rgba(79,209,197,0.4);}
+  .chat-bubble.mine .chat-name{color:var(--teal);}
+  .chat-bubble.theirs{border-color:rgba(242,166,90,0.4);}
+  .chat-bubble.theirs .chat-name{color:var(--amber);}
+  @keyframes chatFloat{
+    0%{transform:translateY(10px) scale(0.92); opacity:0;}
+    10%{opacity:1; transform:translateY(0) scale(1);}
+    82%{opacity:1;}
+    100%{transform:translateY(-40px) scale(0.98); opacity:0;}
+  }
+
+  .hint-flash{
+    animation: hintFlash 1.4s ease-in-out 2;
+  }
+  @keyframes hintFlash{
+    0%,100%{background:transparent;}
+    50%{background:rgba(79,209,197,0.22);}
+  }
+
   .disconnected-overlay{
     text-align:center; font-family:'Space Grotesk',sans-serif; font-weight:700;
     color:#ff8484; font-size:15px; margin-top:10px;
@@ -381,8 +453,10 @@
     h1 .dot{animation:none;}
     .banner{animation:none;}
     .board-frame{animation:none;}
+    .turn-timer.urgent{animation:none;}
+    .chat-bubble{animation:none;}
+    .hint-flash{animation:none;}
   }
-
   /* ---------- animation layer ---------- */
   @keyframes screenIn{
     0%{opacity:0; transform:translateY(10px) scale(0.985);}
@@ -465,6 +539,19 @@
       <div class="card">
         <h2>Your name</h2>
         <input type="text" id="input-name" placeholder="e.g. Hope" maxlength="16">
+        <div class="avatar-picker" id="avatar-picker"></div>
+        <h2>Match length</h2>
+        <div class="match-len-row" id="match-len-row">
+          <button class="btn-ghost len-btn active" data-len="0">Casual</button>
+          <button class="btn-ghost len-btn" data-len="3">Best of 3</button>
+          <button class="btn-ghost len-btn" data-len="5">Best of 5</button>
+        </div>
+        <h2>Turn timer</h2>
+        <div class="match-len-row" id="timer-row">
+          <button class="btn-ghost len-btn active" data-timer="0">Off</button>
+          <button class="btn-ghost len-btn" data-timer="20">20s</button>
+          <button class="btn-ghost len-btn" data-timer="10">10s</button>
+        </div>
         <h2>Start a game</h2>
         <button class="btn-primary" id="btn-create">Create a room</button>
       </div>
@@ -500,14 +587,15 @@
   <div id="screen-game" class="screen hidden">
     <div class="match-bar">
       <div class="score-row" id="score-row">
-        <span class="score-pill p1" id="score-p1">0</span>
+        <span class="score-pill p1"><span id="avatar-p1"></span> <span id="score-p1">0</span></span>
         <span class="score-vs">–</span>
-        <span class="score-pill p2" id="score-p2">0</span>
+        <span class="score-pill p2"><span id="avatar-p2"></span> <span id="score-p2">0</span></span>
       </div>
       <div class="match-bar-div"></div>
       <div class="turn-indicator" id="turn-indicator">
         <span class="swatch" id="turn-swatch"></span>
         <span id="turn-text">—</span>
+        <span class="turn-timer hidden" id="turn-timer-text"></span>
       </div>
       <button class="mute-btn" id="btn-mute" aria-label="Mute sound" title="Mute sound">🔊</button>
     </div>
@@ -526,6 +614,16 @@
         <button class="reaction-btn" data-emoji="😱">😱</button>
         <button class="reaction-btn" data-emoji="👏">👏</button>
         <button class="reaction-btn" data-emoji="😤">😤</button>
+      </div>
+      <div class="toolbar-row chat-row">
+        <input type="text" id="chat-input" placeholder="Say something…" maxlength="60">
+        <button class="mute-btn" id="btn-chat-send" aria-label="Send message" title="Send">➤</button>
+      </div>
+    </div>
+    <div class="toolbar-panel hidden" id="practice-panel">
+      <div class="toolbar-row">
+        <button class="btn-secondary voice-btn" id="btn-hint">💡 Show hint</button>
+        <span class="voice-status" id="hint-status"></span>
       </div>
     </div>
     <div class="banner hidden" id="banner"></div>
@@ -549,6 +647,10 @@
   let peer = null;
   let conn = null;
   let isHost = false;
+  let lastRemoteId = null;
+  let manualDisconnect = false;
+  let reconnectAttempt = 0;
+  let reconnectTimer = null;
 
   let state = null; // authoritative game state, mirrored on both sides
   let score = {1: 0, 2: 0};
@@ -556,6 +658,13 @@
   let soundOn = true;
   let isBotGame = false;
   let botDifficulty = 'medium';
+  let myAvatar = '🦊';
+  let matchTarget = 0; // 0 = casual, or 3/5 for best-of
+  let turnTimerSetting = 0; // 0 = off, or seconds per turn
+  let turnTimerHandle = null;
+  let turnDeadline = 0;
+
+  const AVATAR_OPTIONS = ['🦊','🐸','🐧','🐼','🦁','🐵','🐨','🦄'];
 
   // voice chat
   let localStream = null;
@@ -655,6 +764,47 @@
     try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
   }
 
+  // ---------- Turn timer ----------
+  function stopTurnTimer(){
+    if(turnTimerHandle){ clearInterval(turnTimerHandle); turnTimerHandle = null; }
+    const t = el('turn-timer-text');
+    if(t){ t.classList.add('hidden'); t.classList.remove('urgent'); }
+  }
+
+  function startTurnTimerIfNeeded(){
+    const limit = (state && state.turnLimit) || 0;
+    if(!limit || !state || state.winner || state.turn !== mySymbol){
+      stopTurnTimer();
+      return;
+    }
+    if(turnTimerHandle) return; // already counting down this turn
+    turnDeadline = Date.now() + limit*1000;
+    const timerEl = el('turn-timer-text');
+    if(!timerEl) return;
+    timerEl.classList.remove('hidden');
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((turnDeadline - Date.now())/1000));
+      timerEl.textContent = remaining + 's';
+      timerEl.classList.toggle('urgent', remaining <= 5);
+      if(remaining <= 0){
+        stopTurnTimer();
+        autoPlayOnTimeout();
+      }
+    };
+    tick();
+    turnTimerHandle = setInterval(tick, 250);
+  }
+
+  function autoPlayOnTimeout(){
+    if(!state || state.winner || state.turn !== mySymbol) return;
+    const options = validCols(state.board);
+    if(options.length === 0) return;
+    const col = heuristicMove(state.board, options);
+    sfxDrop(); vibrate(30);
+    if(isHost) applyMove(col, mySymbol);
+    else if(conn && conn.open) conn.send({type:'move', col});
+  }
+
 
   function beep(freq, dur, type, vol){
     if(!soundOn) return;
@@ -699,9 +849,12 @@
     ]
   };
 
-  function freshState(hostName, guestName){
+  function freshState(hostName, guestName, hostAvatar, guestAvatar){
     return {
       names: {1: hostName, 2: guestName || null},
+      avatars: {1: hostAvatar || '🦊', 2: guestAvatar || null},
+      matchTarget: matchTarget || 0,
+      turnLimit: turnTimerSetting || 0,
       board: emptyBoard(),
       turn: 1,
       winner: 0,
@@ -714,8 +867,41 @@
   function setConnStatus(msg){ el('conn-status').textContent = msg || ''; }
 
   // ---------- Landing actions ----------
+  // ---------- Landing setup: avatar picker + match length ----------
+  const avatarPicker = el('avatar-picker');
+  AVATAR_OPTIONS.forEach((emoji, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'avatar-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = emoji;
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Choose avatar ' + emoji);
+    btn.addEventListener('click', () => {
+      myAvatar = emoji;
+      avatarPicker.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    avatarPicker.appendChild(btn);
+  });
+
+  document.querySelectorAll('.len-btn[data-len]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      matchTarget = parseInt(btn.getAttribute('data-len'), 10) || 0;
+      document.querySelectorAll('.len-btn[data-len]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.len-btn[data-timer]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      turnTimerSetting = parseInt(btn.getAttribute('data-timer'), 10) || 0;
+      document.querySelectorAll('.len-btn[data-timer]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
   el('btn-create').addEventListener('click', () => {
     el('landing-error').textContent = '';
+    manualDisconnect = false; reconnectAttempt = 0;
     myName = (el('input-name').value || 'Player 1').trim().slice(0,16) || 'Player 1';
     isHost = true;
     mySymbol = 1;
@@ -755,8 +941,9 @@
       conn = c;
       wireConnection();
       conn.on('open', () => {
-        // ask guest for their name via a hello, they'll send it
         setConnStatus('Opponent connected.');
+        hide('banner');
+        el('btn-rematch').disabled = state ? !!(state.rematchVotes||[]).includes(mySymbol) : true;
       });
     });
 
@@ -771,6 +958,7 @@
 
   el('btn-join').addEventListener('click', () => {
     el('landing-error').textContent = '';
+    manualDisconnect = false; reconnectAttempt = 0;
     myName = (el('input-name').value || 'Player 2').trim().slice(0,16) || 'Player 2';
     const rawCode = (el('input-code').value || '').trim().toLowerCase();
     if(!rawCode){
@@ -779,6 +967,7 @@
     }
     isHost = false;
     mySymbol = 2;
+    lastRemoteId = rawCode;
 
     const joinBtn = el('btn-join');
     joinBtn.disabled = true;
@@ -806,10 +995,11 @@
       conn.on('open', () => {
         clearTimeout(failTimer);
         joinBtn.disabled = false; joinBtn.textContent = originalLabel;
-        conn.send({type:'hello', name: myName});
+        conn.send({type:'hello', name: myName, avatar: myAvatar});
         hide('screen-landing');
         show('screen-game');
         show('toolbar-panel');
+        hide('practice-panel');
         el('app-header').classList.add('header-hidden');
         fitBoard();
       });
@@ -828,11 +1018,14 @@
       isHost = true; isBotGame = true; mySymbol = 1;
       conn = null; peer = null;
       const oppName = 'Computer (' + botDifficulty[0].toUpperCase() + botDifficulty.slice(1) + ')';
-      state = freshState(myName, oppName);
+      const botAvatar = botDifficulty === 'easy' ? '🐢' : botDifficulty === 'hard' ? '👹' : '🤖';
+      state = freshState(myName, oppName, myAvatar, botAvatar);
       lastWinner = 0;
       score = {1:0, 2:0};
       hide('screen-landing'); show('screen-game');
       hide('toolbar-panel');
+      show('practice-panel');
+      el('hint-status').textContent = '';
       el('app-header').classList.add('header-hidden');
       render();
       fitBoard();
@@ -850,6 +1043,7 @@
   });
 
   el('btn-cancel-wait').addEventListener('click', () => {
+    manualDisconnect = true;
     if(peer) peer.destroy();
     hide('screen-waiting'); show('screen-landing');
     el('app-header').classList.remove('header-hidden');
@@ -857,11 +1051,15 @@
   });
 
   el('btn-leave').addEventListener('click', () => {
+    manualDisconnect = true;
+    if(reconnectTimer){ clearTimeout(reconnectTimer); reconnectTimer = null; }
+    stopTurnTimer();
     teardownVoice();
     if(peer) peer.destroy();
-    state = null; conn = null; peer = null; isBotGame = false;
+    state = null; conn = null; peer = null; isBotGame = false; lastRemoteId = null;
     score = {1:0, 2:0}; lastWinner = 0;
     hide('screen-game'); show('screen-landing');
+    hide('practice-panel');
     el('app-header').classList.remove('header-hidden');
     fitBoard();
   });
@@ -876,17 +1074,67 @@
   function wireConnection(){
     conn.on('data', handleData);
     conn.on('close', () => {
-      setConnStatus('Opponent disconnected.');
-      const banner = el('banner');
-      banner.textContent = 'Opponent disconnected — the room is no longer live.';
-      banner.className = 'banner win-them';
-      show('banner');
-      el('btn-rematch').disabled = true;
       teardownVoice();
+      stopTurnTimer();
+      if(manualDisconnect || isBotGame){ conn = null; return; }
+      conn = null;
+      if(isHost){
+        // host just waits — the guest will attempt to reconnect to us,
+        // and our peer.on('connection') handler is already listening
+        setConnStatus('Opponent disconnected — waiting for them to reconnect…');
+        const banner = el('banner');
+        banner.textContent = '📡 Connection lost — waiting for your opponent to reconnect…';
+        banner.className = 'banner win-them';
+        show('banner');
+        el('btn-rematch').disabled = true;
+      } else {
+        attemptReconnect();
+      }
     });
     conn.on('error', () => {
       setConnStatus('Connection lost.');
     });
+  }
+
+  function attemptReconnect(){
+    if(manualDisconnect || !lastRemoteId || !peer || peer.destroyed) return;
+    reconnectAttempt++;
+    const maxAttempts = 6;
+    setConnStatus('Reconnecting… (attempt ' + reconnectAttempt + '/' + maxAttempts + ')');
+    const banner = el('banner');
+    banner.textContent = '📡 Reconnecting to your opponent…';
+    banner.className = 'banner draw';
+    show('banner');
+
+    let settled = false;
+    try{
+      const newConn = peer.connect(lastRemoteId, {reliable:true});
+      newConn.on('open', () => {
+        settled = true;
+        conn = newConn;
+        wireConnection();
+        conn.send({type:'rejoin', name: myName, avatar: myAvatar});
+        reconnectAttempt = 0;
+        setConnStatus('Reconnected!');
+        hide('banner');
+        render();
+        myVoiceReady = false; remoteVoiceReady = false; // voice needs manual re-enable after a drop
+      });
+      newConn.on('error', () => {});
+    }catch(e){ /* fall through to retry below */ }
+
+    reconnectTimer = setTimeout(() => {
+      if(settled || (conn && conn.open)) return;
+      if(reconnectAttempt >= maxAttempts){
+        setConnStatus('');
+        const b = el('banner');
+        b.textContent = "Couldn't reconnect — your opponent seems to be gone.";
+        b.className = 'banner win-them';
+        show('banner');
+        return;
+      }
+      attemptReconnect();
+    }, 2200);
   }
 
   // ---------- Voice chat ----------
@@ -981,6 +1229,11 @@
       return;
     }
 
+    if(msg.type === 'chat'){
+      showChatBubble(String(msg.text || '').slice(0,60), msg.name || 'Opponent', false);
+      return;
+    }
+
     if(msg.type === 'voice-ready'){
       remoteVoiceReady = true;
       setVoiceStatus('Opponent enabled voice chat.');
@@ -992,11 +1245,21 @@
 
     if(isHost){
       if(msg.type === 'hello'){
-        state = freshState(myName, msg.name);
+        state = freshState(myName, msg.name, myAvatar, msg.avatar);
         hide('screen-waiting'); show('screen-game'); show('toolbar-panel');
+        hide('practice-panel');
         fitBoard();
         broadcast();
         render();
+      } else if(msg.type === 'rejoin'){
+        // guest reconnected mid-game — just resync them, don't reset anything
+        if(state){
+          state.names[2] = msg.name;
+          state.avatars[2] = msg.avatar;
+          setConnStatus('Opponent reconnected.');
+          broadcast();
+          render();
+        }
       } else if(msg.type === 'move'){
         applyMove(msg.col, 2);
       } else if(msg.type === 'rematchVote'){
@@ -1041,6 +1304,10 @@
 
   function applyMove(col, bySymbol){
     if(!state || state.winner || state.turn !== bySymbol) return;
+    if(isBotGame && bySymbol === mySymbol){
+      const hs = el('hint-status');
+      if(hs) hs.textContent = '';
+    }
     const board = state.board;
     let row = -1;
     for(let r=ROWS-1;r>=0;r--){
@@ -1241,6 +1508,35 @@
     return result.col !== undefined ? result.col : null;
   }
 
+  // best move for player 1 (the human) — reuses the same search, just
+  // starting from the minimizing side, since evaluateBoard already scores
+  // everything from player 2's perspective
+  function bestMoveForPlayer1(board, depth){
+    const result = minimax(board, depth, -Infinity, Infinity, false);
+    return result.col !== undefined ? result.col : null;
+  }
+
+  el('btn-hint').addEventListener('click', () => {
+    if(!state || state.winner || state.turn !== mySymbol) return;
+    const hintBtn = el('btn-hint');
+    hintBtn.disabled = true;
+    hintBtn.textContent = 'Thinking…';
+    setTimeout(() => {
+      const col = bestMoveForPlayer1(state.board, 6);
+      hintBtn.disabled = false;
+      hintBtn.textContent = '💡 Show hint';
+      if(col === null){ return; }
+      el('hint-status').textContent = 'Try column ' + (col+1) + '.';
+      const boardEl = el('board');
+      const colEl = boardEl.children[col];
+      if(colEl){
+        colEl.classList.remove('hint-flash');
+        void colEl.offsetWidth;
+        colEl.classList.add('hint-flash');
+      }
+    }, 30);
+  });
+
   function finishBotMove(col){
     sfxDrop();
     vibrate(20);
@@ -1279,6 +1575,9 @@
     const p1 = el('score-p1'); const p2 = el('score-p2');
     if(p1) p1.textContent = score[1];
     if(p2) p2.textContent = score[2];
+    const avatarEl1 = el('avatar-p1'); const avatarEl2 = el('avatar-p2');
+    if(avatarEl1) avatarEl1.textContent = (state.avatars && state.avatars[1]) || '';
+    if(avatarEl2) avatarEl2.textContent = (state.avatars && state.avatars[2]) || '';
 
     const boardEl = el('board');
     boardEl.innerHTML = '';
@@ -1327,19 +1626,30 @@
     if(state.winner){
       turnIndicator.style.visibility = 'hidden';
       turnIndicator.classList.remove('my-turn');
+      stopTurnTimer();
     } else {
       turnIndicator.style.visibility = 'visible';
       swatch.style.background = state.turn === 1 ? 'var(--amber)' : 'var(--teal)';
       turnText.textContent = state.turn === mySymbol ? 'Your turn' : (state.names[state.turn] || 'Opponent') + "'s turn";
       turnIndicator.classList.toggle('my-turn', state.turn === mySymbol);
+      startTurnTimerIfNeeded();
     }
 
     const banner = el('banner');
+    const target = state.matchTarget || 0;
+    const majority = target ? Math.ceil(target/2) : Infinity;
+    const matchOver = target && (score[1] >= majority || score[2] >= majority);
+
     if(state.winner){
       show('banner');
       if(state.winner === 3){
         banner.textContent = "It's a draw.";
         banner.className = 'banner draw';
+      } else if(matchOver){
+        const winnerAvatar = (state.avatars && state.avatars[state.winner]) || '';
+        const winnerName = state.winner === mySymbol ? 'You' : (state.names[state.winner] || 'Opponent');
+        banner.textContent = '🏆 ' + winnerAvatar + ' ' + winnerName + (state.winner === mySymbol ? ' win' : ' wins') + ' the match ' + score[state.winner] + '–' + score[state.winner === 1 ? 2 : 1] + '!';
+        banner.className = 'banner ' + (state.winner === mySymbol ? 'win-you' : 'win-them');
       } else if(state.winner === mySymbol){
         banner.textContent = 'You win! \ud83c\udf89';
         banner.className = 'banner win-you';
@@ -1361,20 +1671,33 @@
             void bumpEl.offsetWidth;
             bumpEl.classList.add('bump');
           }
+          const wonMatch = target && score[state.winner] >= majority;
+          if(state.winner === mySymbol){
+            launchConfetti();
+            vibrate(wonMatch ? [40,60,40,60,40,60,90] : [30,50,30,50,60]);
+            if(wonMatch) setTimeout(launchConfetti, 350);
+          } else {
+            vibrate(80);
+          }
           sfxWin();
-          if(state.winner === mySymbol){ launchConfetti(); vibrate([30,50,30,50,60]); }
-          else { vibrate(80); }
         }
       }
     } else {
       hide('banner');
+      if(lastWinner !== 0 && target && (score[1] >= majority || score[2] >= majority)){
+        // a new game just started right after a match-deciding win — reset
+        // the series tally for the next match
+        score = {1:0, 2:0};
+        if(p1) p1.textContent = 0;
+        if(p2) p2.textContent = 0;
+      }
     }
     lastWinner = state.winner;
 
     const rematchBtn = el('btn-rematch');
     if(state.winner){
       rematchBtn.disabled = (state.rematchVotes||[]).includes(mySymbol);
-      rematchBtn.textContent = rematchBtn.disabled ? 'Waiting for opponent…' : 'Rematch';
+      rematchBtn.textContent = rematchBtn.disabled ? 'Waiting for opponent…' : (matchOver ? 'New match' : 'Rematch');
     } else {
       rematchBtn.disabled = true;
       rematchBtn.textContent = 'Rematch';
@@ -1414,6 +1737,37 @@
     layer.appendChild(span);
     setTimeout(() => span.remove(), 2300);
   }
+
+  // ---------- Chat bubbles ----------
+  function showChatBubble(text, name, mine){
+    const layer = el('reaction-fly-layer');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + (mine ? 'mine' : 'theirs');
+    const nameEl = document.createElement('span');
+    nameEl.className = 'chat-name';
+    nameEl.textContent = name || (mine ? 'You' : 'Opponent');
+    const textEl = document.createElement('span');
+    textEl.textContent = text;
+    bubble.appendChild(nameEl);
+    bubble.appendChild(textEl);
+    bubble.style.left = mine ? (18 + Math.random()*10) + '%' : (18 + Math.random()*10) + '%';
+    bubble.style.bottom = (70 + Math.random()*40) + 'px';
+    layer.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 3500);
+  }
+
+  function sendChat(){
+    const input = el('chat-input');
+    const text = (input.value || '').trim().slice(0, 60);
+    if(!text) return;
+    input.value = '';
+    showChatBubble(text, 'You', true);
+    if(conn && conn.open) conn.send({type:'chat', text, name: myName});
+  }
+  el('btn-chat-send').addEventListener('click', sendChat);
+  el('chat-input').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); sendChat(); }
+  });
 
   // ---------- Confetti ----------
   function launchConfetti(){
