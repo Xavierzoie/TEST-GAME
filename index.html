@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#12172B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Drop Four">
 <title>Drop Four</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -175,6 +179,13 @@
     background:linear-gradient(135deg, var(--amber), #e08a3c);
     color:#1b1305;
   }
+  .theme-row{display:flex; gap:8px; margin-bottom:14px;}
+  .theme-btn{
+    width:34px; height:34px; border-radius:50%; padding:0; min-height:auto;
+    background:linear-gradient(135deg, var(--sw1) 50%, var(--sw2) 50%);
+    border:2px solid transparent;
+  }
+  .theme-btn.active{border-color:#fff;}
   .mute-btn{
     background:var(--panel-2); border:1px solid rgba(255,255,255,0.08);
     border-radius:50%; width:36px; height:36px; padding:0; font-size:15px;
@@ -378,6 +389,10 @@
   .banner.win-you{color:var(--teal); box-shadow:inset 0 0 0 1px rgba(79,209,197,0.4);}
   .banner.win-them{color:var(--amber); box-shadow:inset 0 0 0 1px rgba(242,166,90,0.4);}
   .banner.draw{color:var(--muted);}
+  .recap-line{
+    width:100%; max-width:var(--board-max); text-align:center;
+    color:var(--muted); font-size:12px; margin-top:-6px;
+  }
 
   .error-msg{color:#ff8484; font-size:13px; min-height:18px; text-align:center;}
   .conn-status{color:var(--muted); font-size:12px; text-align:center; min-height:16px;}
@@ -402,6 +417,12 @@
   }
 
   .chat-row{gap:8px;}
+  .undo-row{gap:8px; flex-wrap:wrap;}
+  .undo-row .btn-secondary{width:auto; flex:none; padding:8px 14px; font-size:13px;}
+  .undo-row .accept-btn{
+    background:linear-gradient(135deg, var(--teal), var(--teal-dim)); color:#06201d;
+  }
+  .undo-row .decline-btn{background:var(--panel-2); color:var(--muted);}
   #chat-input{
     flex:1; min-width:0; margin-bottom:0;
     padding:10px 12px; font-size:14px; letter-spacing:normal;
@@ -552,6 +573,13 @@
           <button class="btn-ghost len-btn" data-timer="20">20s</button>
           <button class="btn-ghost len-btn" data-timer="10">10s</button>
         </div>
+        <h2>Board theme</h2>
+        <div class="theme-row" id="theme-row">
+          <button class="theme-btn active" data-theme="classic" title="Classic" style="--sw1:#F2A65A; --sw2:#4FD1C5;"></button>
+          <button class="theme-btn" data-theme="sunset" title="Sunset" style="--sw1:#FF6B6B; --sw2:#FFD166;"></button>
+          <button class="theme-btn" data-theme="ocean" title="Ocean" style="--sw1:#5B8DEF; --sw2:#00C2A8;"></button>
+          <button class="theme-btn" data-theme="candy" title="Candy" style="--sw1:#F472B6; --sw2:#A78BFA;"></button>
+        </div>
         <h2>Start a game</h2>
         <button class="btn-primary" id="btn-create">Create a room</button>
       </div>
@@ -619,14 +647,19 @@
         <input type="text" id="chat-input" placeholder="Say something…" maxlength="60">
         <button class="mute-btn" id="btn-chat-send" aria-label="Send message" title="Send">➤</button>
       </div>
+      <div class="toolbar-row undo-row hidden" id="undo-row"></div>
     </div>
     <div class="toolbar-panel hidden" id="practice-panel">
       <div class="toolbar-row">
         <button class="btn-secondary voice-btn" id="btn-hint">💡 Show hint</button>
         <span class="voice-status" id="hint-status"></span>
       </div>
+      <div class="toolbar-row undo-row hidden" id="undo-row-practice">
+        <button class="btn-secondary voice-btn" id="btn-undo-practice">↩ Undo my last move</button>
+      </div>
     </div>
     <div class="banner hidden" id="banner"></div>
+    <div class="recap-line hidden" id="recap-line"></div>
     <div class="conn-status" id="conn-status"></div>
     <div class="footer-row">
       <button class="btn-secondary" id="btn-rematch" disabled>Rematch</button>
@@ -856,10 +889,12 @@
       matchTarget: matchTarget || 0,
       turnLimit: turnTimerSetting || 0,
       board: emptyBoard(),
+      history: [],
       turn: 1,
       winner: 0,
       winLine: null,
       lastMove: null,
+      undoRequest: null,
       rematchVotes: []
     };
   }
@@ -895,6 +930,26 @@
     btn.addEventListener('click', () => {
       turnTimerSetting = parseInt(btn.getAttribute('data-timer'), 10) || 0;
       document.querySelectorAll('.len-btn[data-timer]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  const THEMES = {
+    classic: {amber:'#F2A65A', amberDim:'#8a6338', teal:'#4FD1C5', tealDim:'#317f78'},
+    sunset:  {amber:'#FF6B6B', amberDim:'#8f2e2e', teal:'#FFD166', tealDim:'#8a6a1f'},
+    ocean:   {amber:'#5B8DEF', amberDim:'#2c4a8a', teal:'#00C2A8', tealDim:'#0a6b5c'},
+    candy:   {amber:'#F472B6', amberDim:'#8a3a63', teal:'#A78BFA', tealDim:'#5b4a99'}
+  };
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = THEMES[btn.getAttribute('data-theme')];
+      if(!t) return;
+      const root = document.documentElement.style;
+      root.setProperty('--amber', t.amber);
+      root.setProperty('--amber-dim', t.amberDim);
+      root.setProperty('--teal', t.teal);
+      root.setProperty('--teal-dim', t.tealDim);
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     });
   });
@@ -1264,6 +1319,18 @@
         applyMove(msg.col, 2);
       } else if(msg.type === 'rematchVote'){
         castRematchVote(2);
+      } else if(msg.type === 'undo-request'){
+        if(state && !state.winner && (state.history||[]).length > 0){
+          state.undoRequest = {by: 2};
+          broadcast();
+          render();
+        }
+      } else if(msg.type === 'undo-accept'){
+        performUndo();
+      } else if(msg.type === 'undo-decline'){
+        if(state){ state.undoRequest = null; broadcast(); render(); }
+      } else if(msg.type === 'undo-cancel'){
+        if(state){ state.undoRequest = null; broadcast(); render(); }
       }
     } else {
       if(msg.type === 'state'){
@@ -1271,6 +1338,93 @@
         render();
       }
     }
+  }
+
+  // ---------- Undo (multiplayer: mutual consent; bot: instant) ----------
+  function performUndo(){
+    if(!state || !state.history || state.history.length === 0) return;
+    const last = state.history.pop();
+    state.board[last.row][last.col] = 0;
+    state.winner = 0;
+    state.winLine = null;
+    state.undoRequest = null;
+    const prev = state.history[state.history.length - 1];
+    state.lastMove = prev ? {row: prev.row, col: prev.col} : null;
+    state.turn = last.symbol;
+    broadcast();
+    render();
+  }
+
+  function requestUndo(){
+    if(!state || state.winner || !(state.history||[]).length) return;
+    if(isHost){
+      state.undoRequest = {by: mySymbol};
+      broadcast();
+      render();
+    } else if(conn && conn.open){
+      conn.send({type:'undo-request'});
+    }
+  }
+
+  function respondUndo(accept){
+    if(isHost){
+      if(accept) performUndo();
+      else { state.undoRequest = null; broadcast(); render(); }
+    } else if(conn && conn.open){
+      conn.send({type: accept ? 'undo-accept' : 'undo-decline'});
+    }
+  }
+
+  function cancelUndoRequest(){
+    if(isHost){ state.undoRequest = null; broadcast(); render(); }
+    else if(conn && conn.open){ conn.send({type:'undo-cancel'}); }
+  }
+
+  function renderUndoRow(){
+    const row = el('undo-row');
+    if(!row || !state) return;
+    if(state.winner || !(state.history||[]).length){
+      hide('undo-row');
+      row.innerHTML = '';
+      return;
+    }
+    row.innerHTML = '';
+    if(state.undoRequest){
+      if(state.undoRequest.by === mySymbol){
+        const span = document.createElement('span');
+        span.className = 'voice-status';
+        span.textContent = 'Waiting for opponent to respond…';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-secondary decline-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.addEventListener('click', cancelUndoRequest);
+        row.appendChild(span);
+        row.appendChild(cancelBtn);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'voice-status';
+        span.textContent = 'Opponent wants to undo their last move.';
+        const acceptBtn = document.createElement('button');
+        acceptBtn.className = 'btn-secondary accept-btn';
+        acceptBtn.textContent = 'Accept';
+        acceptBtn.addEventListener('click', () => respondUndo(true));
+        const declineBtn = document.createElement('button');
+        declineBtn.className = 'btn-secondary decline-btn';
+        declineBtn.textContent = 'Decline';
+        declineBtn.addEventListener('click', () => respondUndo(false));
+        row.appendChild(span);
+        row.appendChild(acceptBtn);
+        row.appendChild(declineBtn);
+      }
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'btn-secondary';
+      btn.id = 'btn-undo';
+      btn.textContent = '↩ Request undo';
+      btn.addEventListener('click', requestUndo);
+      row.appendChild(btn);
+    }
+    show('undo-row');
   }
 
   function broadcast(){
@@ -1317,6 +1471,8 @@
     board[row][col] = bySymbol;
     const result = checkWinner(board);
     state.board = board;
+    state.history = state.history || [];
+    state.history.push({row, col, symbol: bySymbol});
     state.winner = result.winner;
     state.winLine = result.line;
     state.lastMove = {row, col};
@@ -1331,6 +1487,7 @@
   function castRematchVote(bySymbol){
     if(isBotGame){
       state.board = emptyBoard();
+      state.history = [];
       state.winner = 0;
       state.winLine = null;
       state.lastMove = null;
@@ -1344,9 +1501,11 @@
     if(!state.rematchVotes.includes(bySymbol)) state.rematchVotes.push(bySymbol);
     if(state.rematchVotes.length >= 2){
       state.board = emptyBoard();
+      state.history = [];
       state.winner = 0;
       state.winLine = null;
       state.lastMove = null;
+      state.undoRequest = null;
       state.rematchVotes = [];
       state.turn = state.turn === 1 ? 2 : 1;
     }
@@ -1537,6 +1696,24 @@
     }, 30);
   });
 
+  el('btn-undo-practice').addEventListener('click', () => {
+    if(!state || !state.history || state.history.length === 0) return;
+    // remove plies until it's the human's turn again (undoes the bot's
+    // reply too, so you get a genuine second attempt at your move)
+    while(state.history.length > 0){
+      const last = state.history.pop();
+      state.board[last.row][last.col] = 0;
+      if(last.symbol === mySymbol) break;
+    }
+    state.winner = 0;
+    state.winLine = null;
+    const prev = state.history[state.history.length - 1];
+    state.lastMove = prev ? {row: prev.row, col: prev.col} : null;
+    state.turn = mySymbol;
+    el('hint-status').textContent = '';
+    render();
+  });
+
   function finishBotMove(col){
     sfxDrop();
     vibrate(20);
@@ -1560,7 +1737,7 @@
     for(let c=0;c<COLS;c++){
       const g = document.createElement('div');
       g.className = 'ghost-cell';
-      const myTurn = state && state.turn === mySymbol && !state.winner;
+      const myTurn = state && state.turn === mySymbol && !state.winner && !state.undoRequest;
       if(myTurn && hoverCol === c && landingRow(state.board, c) !== -1){
         g.className += ' show p' + mySymbol;
       }
@@ -1584,7 +1761,7 @@
     for(let c=0;c<COLS;c++){
       const colDiv = document.createElement('div');
       const colFull = state.board[0][c] !== 0;
-      const myTurn = state.turn === mySymbol && !state.winner;
+      const myTurn = state.turn === mySymbol && !state.winner && !state.undoRequest;
       colDiv.className = 'col' + ((myTurn && !colFull) ? '' : ' disabled');
       colDiv.setAttribute('role','button');
       colDiv.setAttribute('aria-label', 'Drop in column ' + (c+1));
@@ -1658,6 +1835,12 @@
         banner.textContent = (state.names[oppSym] || 'Opponent') + ' wins.';
         banner.className = 'banner win-them';
       }
+      const filledCells = state.board.reduce((sum, row) => sum + row.filter(v => v !== 0).length, 0);
+      const recapEl = el('recap-line');
+      if(recapEl){
+        recapEl.textContent = 'Finished in ' + filledCells + (filledCells === 1 ? ' move' : ' moves') + (state.winLine ? ' · four in a row' : '');
+        show('recap-line');
+      }
       if(lastWinner === 0){
         // transition into a win/draw this render — fire feedback once
         if(state.winner === 3){
@@ -1684,6 +1867,7 @@
       }
     } else {
       hide('banner');
+      hide('recap-line');
       if(lastWinner !== 0 && target && (score[1] >= majority || score[2] >= majority)){
         // a new game just started right after a match-deciding win — reset
         // the series tally for the next match
@@ -1702,12 +1886,18 @@
       rematchBtn.disabled = true;
       rematchBtn.textContent = 'Rematch';
     }
+    if(!isBotGame) renderUndoRow();
+    const undoPracticeRow = el('undo-row-practice');
+    if(undoPracticeRow){
+      if(isBotGame && !state.winner && (state.history||[]).length > 0) show('undo-row-practice');
+      else hide('undo-row-practice');
+    }
     fitBoard();
   }
 
   // keyboard: number keys 1-7 drop into that column
   document.addEventListener('keydown', (e) => {
-    if(!state || state.winner || state.turn !== mySymbol) return;
+    if(!state || state.winner || state.turn !== mySymbol || state.undoRequest) return;
     const n = parseInt(e.key, 10);
     if(n >= 1 && n <= 7){
       const c = n - 1;
